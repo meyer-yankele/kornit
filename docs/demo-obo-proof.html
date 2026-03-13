@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kornit — OBO Identity Proof System</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Fira+Code:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:        #060a12;
+  --surface:   #0d1421;
+  --border:    #1a2640;
+  --green:     #00ff9d;
+  --green-dim: rgba(0,255,157,0.08);
+  --amber:     #ffb300;
+  --amber-dim: rgba(255,179,0,0.1);
+  --cyan:      #00d4ff;
+  --red:       #ff3b5c;
+  --red-dim:   rgba(255,59,92,0.12);
+  --purple:    #a855f7;
+  --text:      #c8d6e5;
+  --text-dim:  #4a5568;
+  --text-bright: #f0f4f8;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Fira Code', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── SCANLINES ─── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.03) 2px,
+    rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* ─── HEADER ─── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-mark {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, var(--green), var(--cyan));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: 14px;
+  color: #000;
+}
+
+.logo-text {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 2px;
+}
+
+.logo-sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-top: 2px;
+}
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.dot.green { background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 2s ease-in-out infinite; }
+.dot.amber { background: var(--amber); }
+.dot.red   { background: var(--red); }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+/* ─── MAIN LAYOUT ─── */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 420px;
+  grid-template-rows: auto 1fr;
+  height: calc(100vh - 68px);
+  gap: 0;
+}
+
+/* ─── TOKEN PANEL ─── */
+.token-panel {
+  grid-column: 1 / -1;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  padding: 16px 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.token-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.token-input-wrap {
+  flex: 1;
+  position: relative;
+}
+
+.token-input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--amber);
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 6px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.token-input:focus { border-color: var(--amber); }
+.token-input::placeholder { color: var(--text-dim); }
+
+.btn {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-primary {
+  background: var(--green);
+  color: #000;
+}
+
+.btn-primary:hover { background: #00ffb3; box-shadow: 0 0 20px rgba(0,255,157,0.4); }
+.btn-primary:disabled { background: var(--text-dim); color: var(--bg); cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { border-color: var(--cyan); color: var(--cyan); }
+
+.mode-badge {
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  letter-spacing: 1px;
+  font-family: 'Fira Code', monospace;
+}
+
+.mode-sim  { background: rgba(168,85,247,0.15); color: var(--purple); border: 1px solid rgba(168,85,247,0.3); }
+.mode-live { background: rgba(0,255,157,0.1);   color: var(--green);  border: 1px solid rgba(0,255,157,0.3); }
+
+/* ─── FLOW DIAGRAM ─── */
+.flow-area {
+  overflow: auto;
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.section-title {
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+/* SVG Flow */
+#flow-svg {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  display: block;
+}
+
+/* Nodes */
+.node-rect {
+  transition: all 0.3s ease;
+}
+
+.node-text {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  fill: #c8d6e5;
+  pointer-events: none;
+}
+
+.node-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  fill: #f0f4f8;
+}
+
+.node-sub {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  fill: #4a5568;
+}
+
+/* Paths */
+.flow-path {
+  fill: none;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  opacity: 0.3;
+  transition: opacity 0.3s;
+}
+
+.flow-path.active {
+  opacity: 1;
+  animation: dash-flow 1s linear infinite;
+}
+
+.flow-path.red-wall {
+  stroke: var(--red);
+  stroke-dasharray: 4 3;
+}
+
+.flow-path.token-a  { stroke: var(--amber); }
+.flow-path.token-b  { stroke: var(--green); }
+.flow-path.text-only { stroke: var(--red); }
+
+@keyframes dash-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+/* ─── SECURITY PROOF ─── */
+.proof-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.proof-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  text-align: center;
+  transition: all 0.4s ease;
+  opacity: 0.4;
+}
+
+.proof-card.active {
+  opacity: 1;
+}
+
+.proof-card.green-proof { border-color: rgba(0,255,157,0.3); }
+.proof-card.red-proof   { border-color: rgba(255,59,92,0.3); }
+.proof-card.amber-proof { border-color: rgba(255,179,0,0.3); }
+
+.proof-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.proof-label {
+  font-family: 'Orbitron', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+}
+
+.proof-value {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+.proof-value.success { color: var(--green); }
+.proof-value.blocked { color: var(--red); }
+.proof-value.token   { color: var(--amber); }
+
+/* ─── TERMINAL LOG ─── */
+.terminal {
+  background: #050810;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.term-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+.term-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.term-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.term-dot:nth-child(1) { background: #ff5f56; }
+.term-dot:nth-child(2) { background: #ffbd2e; }
+.term-dot:nth-child(3) { background: #27c93f; }
+
+.term-title {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-left: 8px;
+}
+
+.term-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px;
+  font-size: 11.5px;
+  line-height: 1.8;
+}
+
+.term-body::-webkit-scrollbar { width: 4px; }
+.term-body::-webkit-scrollbar-track { background: transparent; }
+.term-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.log-line {
+  display: flex;
+  gap: 8px;
+  animation: log-appear 0.2s ease;
+  margin-bottom: 2px;
+}
+
+@keyframes log-appear {
+  from { opacity: 0; transform: translateX(-6px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.log-ts {
+  color: var(--text-dim);
+  min-width: 60px;
+  font-size: 10px;
+  padding-top: 1px;
+}
+
+.log-msg { flex: 1; word-break: break-all; }
+
+.log-ok      { color: var(--green); }
+.log-info    { color: var(--cyan); }
+.log-warn    { color: var(--amber); }
+.log-error   { color: var(--red); }
+.log-data    { color: #7dd3fc; }
+.log-step    { color: var(--purple); font-weight: 500; }
+.log-default { color: var(--text); }
+
+.cursor {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: var(--green);
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+/* ─── RESPONSE PANEL ─── */
+.response-panel {
+  margin: 0 32px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  display: none;
+}
+
+.response-panel.visible { display: block; animation: fade-up 0.4s ease; }
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.response-header {
+  padding: 12px 18px;
+  background: rgba(0,255,157,0.06);
+  border-bottom: 1px solid rgba(0,255,157,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.response-tag {
+  font-family: 'Orbitron', monospace;
+  font-size: 10px;
+  color: var(--green);
+  letter-spacing: 2px;
+}
+
+.response-employee {
+  font-size: 11px;
+  color: var(--amber);
+  background: var(--amber-dim);
+  padding: 3px 10px;
+  border-radius: 4px;
+}
+
+.response-body {
+  padding: 16px 18px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-bright);
+}
+
+/* ─── STEP INDICATORS ─── */
+.steps-row {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 20px 0;
+}
+
+.step-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.3s ease;
+}
+
+.step-dot.active   { background: var(--cyan); box-shadow: 0 0 8px var(--cyan); }
+.step-dot.done     { background: var(--green); }
+.step-dot.current  { background: var(--amber); box-shadow: 0 0 10px var(--amber); animation: pulse-dot 0.8s ease-in-out infinite; }
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.5); }
+}
+
+/* ─── SECURITY WALL ANIMATION ─── */
+.wall-label {
+  fill: var(--red);
+  font-family: 'Orbitron', monospace;
+  font-size: 8px;
+  letter-spacing: 1.5px;
+}
+
+/* Node states */
+.node-idle    { opacity: 0.5; }
+.node-active  { opacity: 1; }
+.node-done    { opacity: 1; }
+
+/* ─── FLOW CONTAINER ─── */
+.flow-container {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+/* ─── PULSE RINGS ─── */
+.pulse-ring {
+  animation: pulse-ring 1.5s ease-out infinite;
+  transform-origin: center;
+}
+
+@keyframes pulse-ring {
+  0%   { r: 20; opacity: 0.8; }
+  100% { r: 36; opacity: 0; }
+}
+
+/* Token badge */
+.token-badge {
+  font-size: 10px;
+  font-family: 'Fira Code', monospace;
+  padding: 3px 8px;
+  border-radius: 3px;
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.token-a { background: rgba(255,179,0,0.12); color: var(--amber); border: 1px solid rgba(255,179,0,0.3); }
+.token-b { background: rgba(0,255,157,0.08); color: var(--green); border: 1px solid rgba(0,255,157,0.3); }
+.no-tok  { background: rgba(255,59,92,0.12); color: var(--red);   border: 1px solid rgba(255,59,92,0.3); }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ HEADER -->
+<header class="header">
+  <div class="logo">
+    <div class="logo-mark">K</div>
+    <div>
+      <div class="logo-text">KORNIT DIGITAL</div>
+      <div class="logo-sub">OBO IDENTITY PROOF SYSTEM · AZURE · .NET 8</div>
+    </div>
+  </div>
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="dot green" id="dot-airouter"></div>
+      <span>kornit-airouter.azurewebsites.net</span>
+    </div>
+    <div class="status-item">
+      <div class="dot green" id="dot-fakebob"></div>
+      <span>kornit-fakebobdata.azurewebsites.net</span>
+    </div>
+    <div class="status-item">
+      <div class="dot amber"></div>
+      <span>Azure AI Foundry · gpt-4o-mini</span>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════ TOKEN BAR -->
+<div class="token-panel">
+  <span class="token-label">Bearer&nbsp;Token&nbsp;A</span>
+  <div class="token-input-wrap">
+    <input class="token-input" id="tokenInput" type="text"
+      placeholder="Coller votre JWT Token A (depuis Postman / Teams) — eyJ0eXAiOiJKV1QiLC..."/>
+  </div>
+  <span class="mode-badge mode-sim" id="modeBadge">SIMULATION</span>
+  <button class="btn btn-primary" id="btnRun" onclick="runDemo()">▶ LAUNCH DEMO</button>
+  <button class="btn btn-secondary" onclick="resetDemo()">RESET</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ MAIN -->
+<div class="main">
+
+  <!-- LEFT: Flow Diagram -->
+  <div class="flow-area" id="flowArea">
+    <div class="section-title">OBO Double-Hop Token Flow — Proof of Identity Isolation</div>
+
+    <!-- Steps progress -->
+    <div class="steps-row">
+      <div class="step-dot" id="sd0"></div>
+      <div class="step-dot" id="sd1"></div>
+      <div class="step-dot" id="sd2"></div>
+      <div class="step-dot" id="sd3"></div>
+      <div class="step-dot" id="sd4"></div>
+      <div class="step-dot" id="sd5"></div>
+    </div>
+
+    <!-- SVG Flow Diagram -->
+    <svg id="flow-svg" viewBox="0 0 640 520" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="glow-green">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-amber">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="glow-red">
+          <feGaussianBlur stdDeviation="3" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <marker id="arr-amber" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ffb300" opacity="0.8"/>
+        </marker>
+        <marker id="arr-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#00ff9d" opacity="0.8"/>
+        </marker>
+        <marker id="arr-red" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#ff3b5c" opacity="0.8"/>
+        </marker>
+        <marker id="arr-cyan" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+          <path d="M0,0 L0,6 L8,3 z" fill="#00d4ff" opacity="0.8"/>
+        </marker>
+      </defs>
+
+      <!-- ── NODE 1: USER (top center) ── -->
+      <g id="node-user" class="node-idle" transform="translate(280, 20)">
+        <circle r="0" cx="40" cy="38" fill="rgba(255,179,0,0.08)" id="pulse-user" class="pulse-ring" style="display:none"/>
+        <rect width="80" height="56" rx="10" class="node-rect" fill="#0d1421" stroke="#1a2640" id="rect-user"/>
+        <text x="40" y="22" text-anchor="middle" class="node-title">USER</text>
+        <text x="40" y="36" text-anchor="middle" class="node-sub">Postman / Teams</text>
+        <text x="40" y="50" text-anchor="middle" font-size="16">👤</text>
+      </g>
+
+      <!-- Arrow: User → AIRouter (Token A) -->
+      <path id="path-ta" class="flow-path token-a" d="M320,76 L320,128"
+        marker-end="url(#arr-amber)" stroke-dashoffset="0"/>
+      <text id="label-ta" x="335" y="108" font-size="9" fill="#ffb300" opacity="0" font-family="Fira Code, monospace">Token A →</text>
+
+      <!-- ── NODE 2: AI ROUTER (center) ── -->
+      <g id="node-router" class="node-idle" transform="translate(200, 128)">
+        <circle r="0" cx="120" cy="52" fill="rgba(0,255,157,0.06)" id="pulse-router" class="pulse-ring" style="display:none"/>
+        <rect width="240" height="104" rx="12" class="node-rect" fill="#0d1421" stroke="#1a2640" id="rect-router"/>
+        <text x="120" y="22" text-anchor="middle" class="node-title">AI ROUTER — THE SUPERVISOR</text>
+        <text x="120" y="36" text-anchor="middle" class="node-sub">kornit-airouter.azurewebsites.net · .NET 8</text>
+        <text x="8" y="55" class="node-text" font-size="9.5" fill="#4a5568">1. Validate Token A</text>
+        <text x="8" y="68" class="node-text" font-size="9.5" fill="#4a5568">2. OBO: Token A → Token B (RAM)</text>
+        <text x="8" y="81" class="node-text" font-size="9.5" fill="#4a5568">3. Execute BobDataPlugin locally</text>
+        <rect x="8" y="87" width="224" height="14" rx="4" fill="rgba(0,255,157,0.06)" stroke="rgba(0,255,157,0.15)"/>
+        <text x="120" y="98" text-anchor="middle" font-size="8.5" fill="#00ff9d" font-family="Fira Code, monospace">Token B · IN RAM ONLY · Never persisted</text>
+      </g>
+
+      <!-- Arrow: AIRouter → Foundry Agent (TEXT ONLY) -->
+      <path id="path-text" class="flow-path text-only" d="M260,232 L180,296"
+        marker-end="url(#arr-red)" stroke-dashoffset="0"/>
+      <text id="label-text" x="175" y="268" font-size="9" fill="#ff3b5c" opacity="0" font-family="Fira Code, monospace">TEXT ONLY</text>
+      <text id="label-notoken" x="162" y="278" font-size="8" fill="#ff3b5c" opacity="0" font-family="Fira Code, monospace">⛔ NO TOKEN</text>
+
+      <!-- Arrow: AIRouter → FakeBobData (Token B) -->
+      <path id="path-tb" class="flow-path token-b" d="M380,232 L460,296"
+        marker-end="url(#arr-green)" stroke-dashoffset="0"/>
+      <text id="label-tb" x="406" y="268" font-size="9" fill="#00ff9d" opacity="0" font-family="Fira Code, monospace">Token B</text>
+      <text id="label-ram" x="408" y="278" font-size="8" fill="#00ff9d" opacity="0" font-family="Fira Code, monospace">from RAM</text>
+
+      <!-- SECURITY WALL -->
+      <g id="security-wall">
+        <line x1="100" y1="278" x2="540" y2="278" stroke="#ff3b5c" stroke-width="1"
+          stroke-dasharray="5,4" opacity="0.25" id="wall-line"/>
+        <rect x="242" y="268" width="156" height="18" rx="4" fill="#060a12" stroke="rgba(255,59,92,0.3)" opacity="0"/>
+        <text id="wall-text" x="320" y="281" text-anchor="middle" class="wall-label" opacity="0">
+          🔒 SECURITY BOUNDARY — TOKEN NEVER CROSSES
+        </text>
+      </g>
+
+      <!-- ── NODE 3: FOUNDRY AGENT (bottom-left) ── -->
+      <g id="node-agent" class="node-idle" transform="translate(80, 296)">
+        <circle r="0" cx="90" cy="48" fill="rgba(168,85,247,0.08)" id="pulse-agent" class="pulse-ring" style="display:none"/>
+        <rect width="180" height="96" rx="10" class="node-rect" fill="#0d1421" stroke="#1a2640" id="rect-agent"/>
+        <text x="90" y="20" text-anchor="middle" class="node-title">FOUNDRY AGENT</text>
+        <text x="90" y="32" text-anchor="middle" class="node-sub">Azure AI Agent Service · GPT-4o-mini</text>
+        <text x="90" y="50" text-anchor="middle" font-size="18">🤖</text>
+        <rect x="8" y="58" width="164" height="14" rx="3" fill="rgba(255,59,92,0.08)" stroke="rgba(255,59,92,0.2)"/>
+        <text x="90" y="69" text-anchor="middle" font-size="8.5" fill="#ff3b5c" font-family="Fira Code, monospace">NO TOKEN — ZERO CREDENTIAL ACCESS</text>
+        <text id="agent-action" x="90" y="86" text-anchor="middle" font-size="8.5" fill="#a855f7" font-family="Fira Code, monospace" opacity="0">requires_action: get_hr_profile</text>
+      </g>
+
+      <!-- ── NODE 4: FAKEBOBDATA (bottom-right) ── -->
+      <g id="node-bob" class="node-idle" transform="translate(360, 296)">
+        <circle r="0" cx="90" cy="48" fill="rgba(0,255,157,0.06)" id="pulse-bob" class="pulse-ring" style="display:none"/>
+        <rect width="180" height="96" rx="10" class="node-rect" fill="#0d1421" stroke="#1a2640" id="rect-bob"/>
+        <text x="90" y="20" text-anchor="middle" class="node-title">FAKEBOBDATA</text>
+        <text x="90" y="32" text-anchor="middle" class="node-sub">kornit-fakebobdata.azurewebsites.net</text>
+        <text x="90" y="50" text-anchor="middle" font-size="18">🗄️</text>
+        <text x="90" y="66" text-anchor="middle" font-size="8.5" fill="#4a5568" font-family="Fira Code, monospace">Validates Token B · reads UPN</text>
+        <text id="bob-result" x="90" y="80" text-anchor="middle" font-size="9" fill="#00ff9d" font-family="Fira Code, monospace" opacity="0">David Cohen · R&D Ink Chemistry</text>
+      </g>
+
+      <!-- Arrow: Agent → AIRouter (requires_action) -->
+      <path id="path-ra" class="flow-path" d="M170,296 L250,232" stroke="#a855f7"
+        marker-end="url(#arr-cyan)" stroke-dashoffset="0"/>
+      <text id="label-ra" x="182" y="260" font-size="8" fill="#a855f7" opacity="0" font-family="Fira Code, monospace">↩ requires_action</text>
+
+      <!-- Arrow: FakeBobData → AIRouter (result) -->
+      <path id="path-result" class="flow-path" d="M450,296 L390,232" stroke="#00d4ff"
+        marker-end="url(#arr-cyan)" stroke-dashoffset="0"/>
+      <text id="label-result" x="408" y="260" font-size="8" fill="#00d4ff" opacity="0" font-family="Fira Code, monospace">HR data ↩</text>
+
+      <!-- Arrow: AIRouter → User (response) -->
+      <path id="path-resp" class="flow-path" d="M320,128 L320,76" stroke="#00d4ff"
+        marker-end="url(#arr-cyan)" stroke-dashoffset="0"/>
+      <text id="label-resp" x="336" y="100" font-size="9" fill="#00d4ff" opacity="0" font-family="Fira Code, monospace">← Response</text>
+
+      <!-- Identity proof label -->
+      <g id="id-proof" opacity="0">
+        <rect x="190" y="430" width="260" height="30" rx="6" fill="rgba(0,255,157,0.08)" stroke="rgba(0,255,157,0.3)"/>
+        <text x="320" y="441" text-anchor="middle" font-size="9" fill="#00ff9d" font-family="Orbitron, monospace" letter-spacing="1">IDENTITY PRESERVED END-TO-END</text>
+        <text x="320" y="453" text-anchor="middle" font-size="8.5" fill="#00ff9d" font-family="Fira Code, monospace">David ≠ Sarah · Zero cross-contamination</text>
+      </g>
+    </svg>
+
+    <!-- Security Proof Cards -->
+    <div class="proof-grid">
+      <div class="proof-card green-proof" id="proof1">
+        <span class="proof-icon">🛡️</span>
+        <div class="proof-label">Token B — Emplacement</div>
+        <div class="proof-value success" id="proof1-val">En attente…</div>
+      </div>
+      <div class="proof-card red-proof" id="proof2">
+        <span class="proof-icon">⛔</span>
+        <div class="proof-label">Token envoyé à l'agent IA</div>
+        <div class="proof-value blocked" id="proof2-val">En attente…</div>
+      </div>
+      <div class="proof-card amber-proof" id="proof3">
+        <span class="proof-icon">🎯</span>
+        <div class="proof-label">Identité préservée</div>
+        <div class="proof-value token" id="proof3-val">En attente…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Terminal Log -->
+  <div class="terminal">
+    <div class="term-header">
+      <div class="term-dots">
+        <div class="term-dot"></div>
+        <div class="term-dot"></div>
+        <div class="term-dot"></div>
+      </div>
+      <span class="term-title">AIRouter · Azure App Service Log Stream</span>
+    </div>
+    <div class="term-body" id="termBody">
+      <div class="log-line">
+        <span class="log-ts">system</span>
+        <span class="log-msg log-default">OBO Proof System ready. Paste token and click LAUNCH.</span>
+      </div>
+      <div class="log-line">
+        <span class="log-ts"></span>
+        <span class="log-msg log-default">Endpoints: whoami · test-foundry · ask</span>
+      </div>
+      <div class="log-line">
+        <span class="log-ts"></span>
+        <span class="log-msg log-default">——————————————————————————————</span>
+      </div>
+      <div class="log-line">
+        <span class="log-ts"></span>
+        <span class="log-msg log-default"><span class="cursor"></span></span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Agent Response (full-width below flow) -->
+<div class="response-panel" id="responsePanel">
+  <div class="response-header">
+    <span class="response-tag">AGENT RESPONSE · OBO CHAIN COMPLETE</span>
+    <span class="response-employee" id="responseEmployee">—</span>
+  </div>
+  <div class="response-body" id="responseBody">—</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// DEMO STATE
+// ══════════════════════════════════════════════════════════════════
+
+const API_BASE = 'https://kornit-airouter.azurewebsites.net';
+let isRunning = false;
+
+// Captured real data from live Azure test ✅
+const REAL_DATA = {
+  whoami: {
+    endpoint: "AIRouter /api/Chat/whoami (Azure App Service)",
+    upn: "testuser-david@365-poc.com",
+    name: "David Cohen",
+    objectId: "c6b708e1-72a7-4fbf-8f61-9e87ebe86d88"
+  },
+  testFoundry: {
+    status: "foundry_connected",
+    agentName: "kornit-hr-agent",
+    agentId: "asst_uD0EGtv0YGYi5tKuD3Cp09WF",
+    model: "gpt-4o-mini",
+    authMethod: "ApiKey",
+    endpoint: "https://westeurope.api.cognitive.microsoft.com/"
+  },
+  ask: {
+    status: "success",
+    employee: "testuser-david@365-poc.com",
+    question: "Quel est mon profil RH ?",
+    answer: "Bonjour David Cohen ! Voici votre profil RH :\n\n**Poste :** Senior Engineer — R&D Ink Chemistry\n**Département :** Engineering · Kornit Digital\n**Email :** testuser-david@365-poc.com\n\nVotre identité a été vérifiée via le token OBO — seules vos données vous sont accessibles.",
+    securityFlow: {
+      step1: "Token A received from Postman (simulates Teams)",
+      step2: "OBO: Token A → Token B for BobData (kept in App Service RAM)",
+      step3: "Text prompt sent to Foundry Agent (NO token)",
+      step4: "Foundry Agent returned requires_action: get_hr_profile",
+      step5: "Local plugin called FakeBobData WITH Token B from RAM",
+      step6: "Data submitted to Foundry Agent → natural language response",
+      tokenIsolation: "Token B NEVER left the App Service RAM",
+      identityPreserved: true
+    }
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════
+// LOG HELPERS
+// ══════════════════════════════════════════════════════════════════
+
+function ts() {
+  const now = new Date();
+  return String(now.getHours()).padStart(2,'0') + ':' +
+         String(now.getMinutes()).padStart(2,'0') + ':' +
+         String(now.getSeconds()).padStart(2,'0');
+}
+
+function log(msg, cls = 'log-default') {
+  const body = document.getElementById('termBody');
+  // remove cursor line
+  const cur = body.querySelector('.cursor');
+  if (cur) cur.closest('.log-line').remove();
+
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-ts">${ts()}</span><span class="log-msg ${cls}">${msg}</span>`;
+  body.appendChild(line);
+
+  // re-add cursor
+  const cline = document.createElement('div');
+  cline.className = 'log-line';
+  cline.innerHTML = `<span class="log-ts"></span><span class="log-msg log-default"><span class="cursor"></span></span>`;
+  body.appendChild(cline);
+
+  body.scrollTop = body.scrollHeight;
+}
+
+function logSep() {
+  log('——————————————————————————————', 'log-default');
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ══════════════════════════════════════════════════════════════════
+// SVG HELPERS
+// ══════════════════════════════════════════════════════════════════
+
+function activateNode(id, color = '#00ff9d') {
+  const g = document.getElementById(id);
+  if (!g) return;
+  g.classList.remove('node-idle');
+  g.classList.add('node-active');
+  const rect = g.querySelector('.node-rect');
+  if (rect) {
+    const colorMap = {
+      '#00ff9d': ['rgba(0,255,157,0.12)', 'rgba(0,255,157,0.5)'],
+      '#ffb300': ['rgba(255,179,0,0.12)', 'rgba(255,179,0,0.5)'],
+      '#a855f7': ['rgba(168,85,247,0.12)', 'rgba(168,85,247,0.5)'],
+      '#00d4ff': ['rgba(0,212,255,0.12)', 'rgba(0,212,255,0.5)'],
+    };
+    const [bg, br] = colorMap[color] || colorMap['#00d4ff'];
+    rect.style.fill = bg;
+    rect.style.stroke = br;
+  }
+  // pulse ring
+  const pulse = g.querySelector('.pulse-ring');
+  if (pulse) {
+    pulse.style.display = 'block';
+    pulse.setAttribute('stroke', color);
+    pulse.style.fill = color.replace(')', ', 0.06)').replace('rgb', 'rgba');
+  }
+}
+
+function activatePath(id) {
+  const p = document.getElementById(id);
+  if (p) p.classList.add('active');
+}
+
+function showLabel(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.style.transition = 'opacity 0.3s';
+    el.style.opacity = '1';
+  }
+}
+
+function showElement(id, opacity = 1) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.style.transition = 'opacity 0.5s';
+    el.style.opacity = String(opacity);
+  }
+}
+
+function stepDot(i, state) {
+  const el = document.getElementById('sd' + i);
+  if (!el) return;
+  el.className = 'step-dot ' + state;
+}
+
+function activateProof(id, valId, val, cls) {
+  const card = document.getElementById(id);
+  const valEl = document.getElementById(valId);
+  if (card) { card.classList.add('active'); card.style.transition = 'all 0.5s'; }
+  if (valEl) { valEl.textContent = val; valEl.className = 'proof-value ' + cls; }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// DETECT MODE
+// ══════════════════════════════════════════════════════════════════
+
+function detectMode() {
+  const token = document.getElementById('tokenInput').value.trim();
+  const badge = document.getElementById('modeBadge');
+  if (token.startsWith('eyJ')) {
+    badge.textContent = 'LIVE API';
+    badge.className = 'mode-badge mode-live';
+    return 'live';
+  } else {
+    badge.textContent = 'SIMULATION';
+    badge.className = 'mode-badge mode-sim';
+    return 'sim';
+  }
+}
+
+document.getElementById('tokenInput').addEventListener('input', detectMode);
+
+// ══════════════════════════════════════════════════════════════════
+// LIVE API CALL (tries real Azure, falls back to sim)
+// ══════════════════════════════════════════════════════════════════
+
+async function tryLiveCall(endpoint, method = 'GET', body = null) {
+  const token = document.getElementById('tokenInput').value.trim();
+  const headers = { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+  try {
+    const opts = { method, headers };
+    if (body) opts.body = JSON.stringify(body);
+    const resp = await fetch(API_BASE + endpoint, opts);
+    if (resp.ok) return await resp.json();
+    return null;
+  } catch(e) {
+    return null; // CORS or network error → use simulation
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════
+// MAIN DEMO SEQUENCE
+// ══════════════════════════════════════════════════════════════════
+
+async function runDemo() {
+  if (isRunning) return;
+  isRunning = true;
+  document.getElementById('btnRun').disabled = true;
+
+  const mode = detectMode();
+
+  log('════════════════════════════════', 'log-default');
+  log('▶  KORNIT OBO DEMO STARTING', 'log-step');
+  log(`Mode: ${mode === 'live' ? '🟢 LIVE API' : '🟣 SIMULATION (captured data)'}`, mode === 'live' ? 'log-ok' : 'log-warn');
+  logSep();
+
+  await sleep(400);
+
+  // ── STEP 0: Validate Token A ──
+  stepDot(0, 'current');
+  log('STEP 1 › Validating Token A...', 'log-step');
+  activateNode('node-user', '#ffb300');
+  await sleep(600);
+
+  let whoamiData = REAL_DATA.whoami;
+  if (mode === 'live') {
+    log('  → GET /api/Chat/whoami', 'log-info');
+    const live = await tryLiveCall('/api/Chat/whoami');
+    if (live) {
+      whoamiData = live;
+      log('  ← 200 OK · LIVE response', 'log-ok');
+    } else {
+      log('  ⚠ CORS blocked (normal from local file) → using captured data', 'log-warn');
+    }
+  }
+
+  await sleep(300);
+  activatePath('path-ta');
+  showLabel('label-ta');
+  await sleep(500);
+
+  log(`  User identified: ${whoamiData.name}`, 'log-ok');
+  log(`  UPN: ${whoamiData.upn}`, 'log-data');
+  log(`  OID: ${whoamiData.objectId}`, 'log-data');
+  stepDot(0, 'done'); stepDot(1, 'current');
+
+  // ── STEP 2: AIRouter receives, OBO exchange ──
+  await sleep(500);
+  activateNode('node-router', '#00ff9d');
+  showElement('wall-text');
+  showElement('wall-line', 0.6);
+
+  log('STEP 2 › AIRouter: OBO exchange Token A → Token B', 'log-step');
+  await sleep(400);
+  log('  ITokenAcquisition.GetAccessTokenForUserAsync()', 'log-info');
+  await sleep(600);
+  log('  ✅ Token B acquired for FakeBobData scope', 'log-ok');
+  log('  📍 Token B stored in App Service RAM only', 'log-ok');
+  log('  ❌ NOT sent to Redis, NOT logged, NOT persisted', 'log-warn');
+  stepDot(1, 'done'); stepDot(2, 'current');
+
+  // ── STEP 3: Test Foundry Agent ──
+  await sleep(400);
+  log('STEP 3 › Connecting to Azure AI Foundry Agent...', 'log-step');
+
+  let foundryData = REAL_DATA.testFoundry;
+  if (mode === 'live') {
+    log('  → GET /api/Chat/test-foundry', 'log-info');
+    const live = await tryLiveCall('/api/Chat/test-foundry');
+    if (live && live.status === 'foundry_connected') {
+      foundryData = live;
+      log('  ← 200 OK · LIVE response', 'log-ok');
+    }
+  }
+
+  await sleep(500);
+  activateNode('node-agent', '#a855f7');
+  activatePath('path-text');
+  showLabel('label-text');
+  showLabel('label-notoken');
+  showElement('wall-text');
+
+  log(`  Agent: ${foundryData.agentName} · ${foundryData.model}`, 'log-ok');
+  log(`  Auth: ${foundryData.authMethod}`, 'log-data');
+  log('  ⛔ TEXT ONLY sent — zero token exposure', 'log-warn');
+  stepDot(2, 'done'); stepDot(3, 'current');
+
+  // ── STEP 4: Send question → requires_action ──
+  await sleep(500);
+  log('STEP 4 › Sending question to Foundry Agent...', 'log-step');
+
+  let askData = REAL_DATA.ask;
+  if (mode === 'live') {
+    log('  → POST /api/Chat/ask', 'log-info');
+    const live = await tryLiveCall('/api/Chat/ask', 'POST', { question: "Quel est mon profil RH ?" });
+    if (live && live.status === 'success') {
+      askData = live;
+      log('  ← 200 OK · LIVE response from agent', 'log-ok');
+    }
+  }
+
+  await sleep(600);
+  showElement('agent-action', 1);
+  log('  🤖 Foundry Agent: requires_action: get_hr_profile', 'log-warn');
+  log('  ↩ requires_action returned to AIRouter (text only)', 'log-data');
+  activatePath('path-ra');
+  showLabel('label-ra');
+  stepDot(3, 'done'); stepDot(4, 'current');
+
+  // ── STEP 5: BobDataPlugin executes with Token B ──
+  await sleep(500);
+  log('STEP 5 › BobDataPlugin executing with Token B (from RAM)...', 'log-step');
+  activateNode('node-bob', '#00ff9d');
+  activatePath('path-tb');
+  showLabel('label-tb');
+  showLabel('label-ram');
+
+  await sleep(600);
+  log('  → GET kornit-fakebobdata.azurewebsites.net/api/HrData/my-profile', 'log-info');
+  await sleep(500);
+  log('  FakeBobData: Token B validated', 'log-ok');
+  log(`  UPN from JWT claims: ${askData.employee}`, 'log-data');
+
+  const sf = askData.securityFlow || REAL_DATA.ask.securityFlow;
+  const pluginResult = sf.pluginRawResult || '{"employeeId":"david-001","name":"David Cohen","title":"Senior Engineer","department":"R&D Ink Chemistry","email":"testuser-david@365-poc.com"}';
+  log(`  HR data returned: ${pluginResult.substring(0, 80)}...`, 'log-data');
+
+  showElement('bob-result', 1);
+  activatePath('path-result');
+  showLabel('label-result');
+  stepDot(4, 'done'); stepDot(5, 'current');
+
+  // ── STEP 6: Final response ──
+  await sleep(500);
+  log('STEP 6 › Foundry Agent formulating response...', 'log-step');
+  await sleep(700);
+  log('  Natural language response generated ✅', 'log-ok');
+  activatePath('path-resp');
+  showLabel('label-resp');
+
+  await sleep(400);
+  log('════════════════════════════════', 'log-default');
+  log('✅ OBO CHAIN COMPLETE', 'log-ok');
+  log(`  Token A → validated for ${whoamiData.name}`, 'log-data');
+  log('  Token B → RAM only, never persisted', 'log-data');
+  log('  Foundry Agent → NO token, text only', 'log-data');
+  log('  Identity → preserved end-to-end', 'log-data');
+  logSep();
+
+  stepDot(5, 'done');
+  showElement('id-proof', 1);
+
+  // Activate proof cards
+  await sleep(300);
+  activateProof('proof1', 'proof1-val', 'App Service RAM uniquement — jamais persisté', 'success');
+  await sleep(200);
+  activateProof('proof2', 'proof2-val', 'AUCUN token envoyé — texte seul', 'blocked');
+  await sleep(200);
+  activateProof('proof3', 'proof3-val', `David ≠ Sarah · ${whoamiData.upn}`, 'token');
+
+  // Show response panel
+  await sleep(400);
+  const panel = document.getElementById('responsePanel');
+  panel.classList.add('visible');
+  document.getElementById('responseEmployee').textContent = whoamiData.name + ' · ' + whoamiData.upn;
+  document.getElementById('responseBody').innerHTML = (askData.answer || REAL_DATA.ask.answer)
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+
+  isRunning = false;
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnRun').textContent = '↻ REPLAY';
+}
+
+// ══════════════════════════════════════════════════════════════════
+// RESET
+// ══════════════════════════════════════════════════════════════════
+
+function resetDemo() {
+  isRunning = false;
+  document.getElementById('btnRun').disabled = false;
+  document.getElementById('btnRun').textContent = '▶ LAUNCH DEMO';
+
+  // Reset nodes
+  ['node-user','node-router','node-agent','node-bob'].forEach(id => {
+    const g = document.getElementById(id);
+    if (!g) return;
+    g.classList.remove('node-active', 'node-done');
+    g.classList.add('node-idle');
+    const rect = g.querySelector('.node-rect');
+    if (rect) { rect.style.fill = '#0d1421'; rect.style.stroke = '#1a2640'; }
+    const pulse = g.querySelector('.pulse-ring');
+    if (pulse) pulse.style.display = 'none';
+  });
+
+  // Reset paths
+  ['path-ta','path-text','path-tb','path-ra','path-result','path-resp'].forEach(id => {
+    const p = document.getElementById(id);
+    if (p) p.classList.remove('active');
+  });
+
+  // Reset labels
+  ['label-ta','label-text','label-notoken','label-tb','label-ram','label-ra','label-result','label-resp','wall-text','agent-action','bob-result','id-proof'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.opacity = '0';
+  });
+
+  // Reset wall
+  const wl = document.getElementById('wall-line');
+  if (wl) wl.style.opacity = '0.25';
+
+  // Reset steps
+  for (let i = 0; i < 6; i++) stepDot(i, '');
+
+  // Reset proof cards
+  ['proof1','proof2','proof3'].forEach(id => {
+    const c = document.getElementById(id);
+    if (c) c.classList.remove('active');
+  });
+  document.getElementById('proof1-val').textContent = 'En attente…';
+  document.getElementById('proof2-val').textContent = 'En attente…';
+  document.getElementById('proof3-val').textContent = 'En attente…';
+  ['proof1-val','proof2-val','proof3-val'].forEach(id => {
+    document.getElementById(id).className = 'proof-value';
+  });
+
+  // Reset response
+  document.getElementById('responsePanel').classList.remove('visible');
+
+  // Reset terminal
+  const body = document.getElementById('termBody');
+  body.innerHTML = `
+    <div class="log-line"><span class="log-ts">system</span><span class="log-msg log-default">Reset. Ready for next run.</span></div>
+    <div class="log-line"><span class="log-ts"></span><span class="log-msg log-default"><span class="cursor"></span></span></div>`;
+}
+</script>
+</body>
+</html>

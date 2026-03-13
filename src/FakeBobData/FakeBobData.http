@@ -1,0 +1,6 @@
+@FakeBobData_HostAddress = http://localhost:5058
+
+GET {{FakeBobData_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

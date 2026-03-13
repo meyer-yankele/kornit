@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kornit OBO — Architecture Azure</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=DM+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #111827;
+  --border: #1e293b;
+  --accent-blue: #3b82f6;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-orange: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-purple: #8b5cf6;
+  --text: #e2e8f0;
+  --text-dim: #64748b;
+  --text-bright: #f8fafc;
+  --glow-blue: rgba(59, 130, 246, 0.15);
+  --glow-green: rgba(16, 185, 129, 0.15);
+  --glow-orange: rgba(245, 158, 11, 0.15);
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.noise {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 100;
+}
+
+.grid-bg {
+  position: fixed;
+  top: 0; left: 0; width: 100%; height: 100%;
+  background-image:
+    linear-gradient(rgba(59, 130, 246, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(59, 130, 246, 0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  pointer-events: none;
+}
+
+header {
+  text-align: center;
+  padding: 60px 20px 20px;
+  position: relative;
+}
+
+header::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 50%; transform: translateX(-50%);
+  width: 600px; height: 300px;
+  background: radial-gradient(ellipse, rgba(59, 130, 246, 0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+  padding: 6px 16px;
+  border-radius: 20px;
+  margin-bottom: 20px;
+  background: rgba(6, 182, 212, 0.05);
+}
+
+h1 {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+}
+
+h1 span { color: var(--accent-blue); }
+
+.subtitle {
+  font-size: 16px;
+  color: var(--text-dim);
+  font-weight: 300;
+}
+
+/* ─── DIAGRAM ─── */
+.diagram {
+  max-width: 1100px;
+  margin: 40px auto;
+  padding: 0 20px;
+  position: relative;
+}
+
+.row {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 30px;
+  margin-bottom: 12px;
+  position: relative;
+}
+
+.arrow-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 50px;
+  position: relative;
+}
+
+.arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  animation: pulse-arrow 2s ease-in-out infinite;
+}
+
+.arrow svg {
+  width: 24px;
+  height: 24px;
+}
+
+.arrow-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+
+.arrow-label.token-a { color: var(--accent-orange); }
+.arrow-label.no-token { color: var(--accent-red); }
+.arrow-label.token-b { color: var(--accent-green); }
+
+@keyframes pulse-arrow {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  50% { opacity: 1; transform: translateY(3px); }
+}
+
+/* ─── CARDS ─── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  width: 280px;
+  position: relative;
+  transition: all 0.3s ease;
+  animation: fade-in 0.6s ease backwards;
+}
+
+.card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(59, 130, 246, 0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.card:nth-child(1) { animation-delay: 0.1s; }
+.card:nth-child(2) { animation-delay: 0.2s; }
+.card:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  margin-bottom: 14px;
+}
+
+.card-icon.blue { background: var(--glow-blue); color: var(--accent-blue); }
+.card-icon.green { background: var(--glow-green); color: var(--accent-green); }
+.card-icon.orange { background: var(--glow-orange); color: var(--accent-orange); }
+.card-icon.purple { background: rgba(139, 92, 246, 0.15); color: var(--accent-purple); }
+.card-icon.cyan { background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan); }
+
+.card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+}
+
+.card-type {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.card-details {
+  list-style: none;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.8;
+}
+
+.card-details li::before {
+  content: '›';
+  color: var(--accent-blue);
+  margin-right: 6px;
+  font-weight: 700;
+}
+
+.card-details li code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--accent-cyan);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+/* ─── SECURITY WALL ─── */
+.wall {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  margin: 0 auto 12px;
+  max-width: 900px;
+}
+
+.wall-line {
+  width: 100%;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--accent-red) 0px,
+    var(--accent-red) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  position: relative;
+}
+
+.wall-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+/* ─── FLOW STEPS ─── */
+.steps {
+  max-width: 900px;
+  margin: 50px auto 0;
+  padding: 0 20px;
+}
+
+.steps-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.step-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.step {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: border-color 0.2s;
+  animation: fade-in 0.5s ease backwards;
+}
+
+.step:nth-child(1) { animation-delay: 0.4s; }
+.step:nth-child(2) { animation-delay: 0.5s; }
+.step:nth-child(3) { animation-delay: 0.6s; }
+.step:nth-child(4) { animation-delay: 0.7s; }
+.step:nth-child(5) { animation-delay: 0.8s; }
+.step:nth-child(6) { animation-delay: 0.9s; }
+
+.step:hover { border-color: rgba(59, 130, 246, 0.3); }
+
+.step-num {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  opacity: 0.4;
+  min-width: 28px;
+}
+
+.step-text {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+.step-text strong {
+  color: var(--text-bright);
+}
+
+.highlight-token { color: var(--accent-orange); font-weight: 500; }
+.highlight-no { color: var(--accent-red); font-weight: 500; }
+.highlight-safe { color: var(--accent-green); font-weight: 500; }
+
+/* ─── SECURITY BADGES ─── */
+.security {
+  max-width: 900px;
+  margin: 50px auto;
+  padding: 0 20px;
+}
+
+.sec-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.sec-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  animation: fade-in 0.5s ease backwards;
+}
+
+.sec-item:nth-child(1) { animation-delay: 1s; border-color: rgba(16, 185, 129, 0.3); }
+.sec-item:nth-child(2) { animation-delay: 1.1s; border-color: rgba(239, 68, 68, 0.3); }
+.sec-item:nth-child(3) { animation-delay: 1.2s; border-color: rgba(59, 130, 246, 0.3); }
+
+.sec-icon { font-size: 28px; margin-bottom: 10px; }
+
+.sec-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-bright);
+  margin-bottom: 6px;
+}
+
+.sec-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+
+/* ─── TECH STACK ─── */
+.tech {
+  max-width: 900px;
+  margin: 0 auto 60px;
+  padding: 0 20px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tech-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: var(--surface);
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 768px) {
+  h1 { font-size: 28px; }
+  .row { flex-direction: column; align-items: center; }
+  .sec-grid { grid-template-columns: 1fr; }
+  .card { width: 100%; max-width: 320px; }
+}
+</style>
+</head>
+<body>
+<div class="noise"></div>
+<div class="grid-bg"></div>
+
+<header>
+  <div class="badge">Kornit Digital — Azure AI Platform</div>
+  <h1>OBO <span>Identity Flow</span> Architecture</h1>
+  <p class="subtitle">Secure Multi-Agent Identity Propagation on Azure</p>
+</header>
+
+<!-- ═══ DIAGRAM ═══ -->
+<div class="diagram">
+
+  <!-- ROW 1: User -->
+  <div class="row">
+    <div class="card">
+      <div class="card-icon orange">👤</div>
+      <div class="card-title">User (David / Sarah)</div>
+      <div class="card-type">Postman → simulates Teams</div>
+      <ul class="card-details">
+        <li>Login via <code>Entra ID</code></li>
+        <li>Receives <code>Token A</code> (JWT)</li>
+        <li>Scope: <code>user_impersonation</code></li>
+        <li>MFA enforced</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ARROW: Token A -->
+  <div class="arrow-row">
+    <div class="arrow">
+      <span class="arrow-label token-a">Token A (JWT)</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+    </div>
+  </div>
+
+  <!-- ROW 2: AIRouter -->
+  <div class="row">
+    <div class="card" style="width: 600px;">
+      <div class="card-icon blue">🧠</div>
+      <div class="card-title">AIRouter — The Supervisor</div>
+      <div class="card-type">Azure App Service • .NET 8 • Port 443</div>
+      <ul class="card-details">
+        <li>Validates <code>Token A</code> via <code>Microsoft.Identity.Web</code></li>
+        <li><strong>OBO Exchange</strong>: Token A → <code>Token B</code> (scoped for FakeBobData)</li>
+        <li>Token B stored in <code>RAM only</code> (InMemoryTokenCaches)</li>
+        <li>Creates <code>Semantic Kernel</code> + <code>BobDataPlugin</code></li>
+        <li>Sends <strong>TEXT ONLY</strong> to Agent (no token)</li>
+        <li>Intercepts <code>requires_action</code> → executes plugin locally</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- TWO ARROWS: Left to Agent, Right to BobData -->
+  <div class="row" style="justify-content: space-around; max-width: 800px; margin: 0 auto;">
+    <div class="arrow-row" style="flex: 1; display: flex; justify-content: center;">
+      <div class="arrow">
+        <span class="arrow-label no-token">TEXT ONLY — NO TOKEN</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </div>
+    </div>
+    <div class="arrow-row" style="flex: 1; display: flex; justify-content: center;">
+      <div class="arrow">
+        <span class="arrow-label token-b">Token B (OBO) from RAM</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECURITY WALL -->
+  <div class="wall">
+    <div class="wall-line">
+      <div class="wall-badge">🔒 Security Boundary — Token never crosses</div>
+    </div>
+  </div>
+
+  <!-- ROW 3: Agent + FakeBobData -->
+  <div class="row">
+    <div class="card">
+      <div class="card-icon purple">🤖</div>
+      <div class="card-title">Azure OpenAI Agent</div>
+      <div class="card-type">Azure AI Foundry • GPT-4o-mini</div>
+      <ul class="card-details">
+        <li>Receives only <strong>text prompt</strong></li>
+        <li>Analyzes intent</li>
+        <li>Returns <code>requires_action</code></li>
+        <li>Function: <code>get_hr_profile</code></li>
+        <li><strong>Has NO token access</strong></li>
+        <li>Cannot exfiltrate credentials</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <div class="card-icon green">🗄️</div>
+      <div class="card-title">FakeBobData API</div>
+      <div class="card-type">Azure App Service • .NET 8</div>
+      <ul class="card-details">
+        <li>Validates <code>Token B</code> (OBO)</li>
+        <li>Reads <code>upn</code> from JWT claims</li>
+        <li>Returns <strong>user-specific</strong> HR data</li>
+        <li>David → R&D Ink Chemistry</li>
+        <li>Sarah → Digital Printing</li>
+        <li><strong>Enforces per-user RBAC</strong></li>
+      </ul>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ FLOW STEPS ═══ -->
+<div class="steps">
+  <div class="steps-title">Flow en 6 étapes</div>
+  <div class="step-list">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-text"><strong>Authentification</strong> — L'utilisateur se connecte via Entra ID. Postman reçoit le <span class="highlight-token">Token A</span> (JWT signé).</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-text"><strong>OBO Exchange</strong> — AIRouter échange Token A → <span class="highlight-safe">Token B</span> pour FakeBobData. Stocké <span class="highlight-safe">en RAM uniquement</span>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-text"><strong>Prompt envoyé</strong> — Seul le <span class="highlight-no">texte</span> est envoyé à l'agent IA. <span class="highlight-no">Aucun token</span>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-text"><strong>requires_action</strong> — L'agent IA demande l'exécution de <code style="font-family: 'JetBrains Mono'; font-size: 11px; background: rgba(139,92,246,0.1); color: #a78bfa; padding: 1px 4px; border-radius: 3px;">get_hr_profile</code>.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">05</div>
+      <div class="step-text"><strong>Plugin local</strong> — Semantic Kernel exécute le plugin avec <span class="highlight-safe">Token B depuis la RAM</span>. Appelle FakeBobData.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">06</div>
+      <div class="step-text"><strong>Réponse</strong> — Les données RH reviennent → l'agent formule la réponse en <strong>langage naturel</strong>.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SECURITY ═══ -->
+<div class="security">
+  <div class="sec-grid">
+    <div class="sec-item">
+      <div class="sec-icon">🛡️</div>
+      <div class="sec-label">Zero-Trust</div>
+      <div class="sec-desc">Token B ne quitte jamais la RAM du serveur. L'agent IA n'y a aucun accès.</div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">🔐</div>
+      <div class="sec-label">Isolation d'identité</div>
+      <div class="sec-desc">David voit ses données. Sarah voit les siennes. Prouvé par la demo live.</div>
+    </div>
+    <div class="sec-item">
+      <div class="sec-icon">🔍</div>
+      <div class="sec-label">Traçabilité</div>
+      <div class="sec-desc">Chaque appel porte l'identité de l'utilisateur réel. Audit complet.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TECH STACK ═══ -->
+<div class="tech">
+  <span class="tech-tag">.NET 8</span>
+  <span class="tech-tag">Semantic Kernel 1.73</span>
+  <span class="tech-tag">Microsoft.Identity.Web</span>
+  <span class="tech-tag">Azure App Service</span>
+  <span class="tech-tag">Azure AI Foundry</span>
+  <span class="tech-tag">GPT-4o-mini</span>
+  <span class="tech-tag">Entra ID (OBO)</span>
+  <span class="tech-tag">MSAL InMemory Cache</span>
+</div>
+
+</body>
+</html>

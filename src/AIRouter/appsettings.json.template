@@ -1,0 +1,29 @@
+{
+  "AzureAd": {
+    "Instance": "https://login.microsoftonline.com/",
+    "TenantId": "<YOUR_TENANT_ID>",
+    "ClientId": "<YOUR_AIROUTER_CLIENT_ID>",
+    "ClientCredentials": [
+      {
+        "SourceType": "ClientSecret",
+        "ClientSecret": "<YOUR_AIROUTER_CLIENT_SECRET>"
+      }
+    ]
+  },
+  "FakeBobData": {
+    "BaseUrl": "https://<YOUR_FAKEBOBDATA_APP>.azurewebsites.net",
+    "Scopes": [ "api://<YOUR_FAKEBOBDATA_CLIENT_ID>/user_impersonation" ]
+  },
+  "AzureAIFoundry": {
+    "Endpoint": "https://<YOUR_REGION>.api.cognitive.microsoft.com/",
+    "AgentId": "<YOUR_AGENT_ID>",
+    "ApiKey": "<YOUR_API_KEY>",
+    "ModelDeployment": "gpt-4o-mini"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  }
+}
